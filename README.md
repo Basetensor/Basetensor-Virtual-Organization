@@ -1,16 +1,252 @@
-## Hi there 👋
+# Basetensor
 
-<!--
-**Basetensor/Basetensor** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Decentralized AI/ML inference on **Base (L2, chain ID 8453)** with validation via **Bittensor** and a self-hosted data layer (**TensorDB**, a Ceramic fork). Miners run workloads, publish results to IPFS/TensorDB, and earn dual rewards. Developers get low-cost, programmable inference; consumers get free or affordable endpoints via our partner **BlackRain.ai**.
 
-Here are some ideas to get you started:
+---
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## Highlights
+
+* **On-chain settlement:** EVM smart contracts on **Base** for registration, staking, task lifecycle, and rewards.
+* **Verifiable results:** Oracles & Validators run through **Bittensor TestNet** (see subnet mapping).
+* **Data layer built for AI:** **TensorDB** stores miner metadata, task descriptors, and output references; large artifacts in **IPFS**.
+* **CLI-first UX:** `tscli` handles wallets, miner registration, task submission, staking, and monitoring.
+* **Consumer access:** BlackRain.ai provides **free/affordable inference** and lets users exchange **AI Inference Credits ↔ AIT\***.
+* **Token (draft):** Ticker **AIT\*** (*subject to change*) for fees, staking/slashing, and governance.
+
+> **Bittensor Integration (Networks & Subnets)**
+> • Oracles & Validators: **Bittensor TestNet**
+> • **Subnet 415** → Basetensor **Mainnet**
+> • **Subnet 416** → Basetensor **DevNet**
+> *(IDs and mapping may evolve; watch releases for updates.)*
+
+---
+
+## Table of Contents
+
+* [Architecture](#architecture)
+* [Repository Layout](#repository-layout)
+* [Quickstart](#quickstart)
+* [Configuration](#configuration)
+* [CLI (`tscli`)](#cli-tscli)
+* [Contracts](#contracts)
+* [Networks & Subnets](#networks--subnets)
+* [Tokenomics (Draft)](#tokenomics-draft)
+* [Roadmap](#roadmap)
+* [Contributing](#contributing)
+* [Security](#security)
+* [License](#license)
+
+---
+
+## Architecture
+
+* **Smart Contracts (Base, L2 8453):**
+
+  * `NodeRegistry`: miner registration (address, nodeId, public endpoint).
+  * `TaskRegistry`: task assignment & submission; events for observers.
+  * Staking/rewards modules.
+
+* **Bittensor Subnet (validation plane):**
+
+  * **TestNet** oracles provide task parameters/feeds.
+  * **TestNet** validators verify miner outputs, informing rewards.
+
+* **TensorDB (Ceramic fork):**
+
+  * Mutable, queryable streams for miner metadata, task descriptors, result CIDs.
+  * Optional SQL indexing for analytics (MySQL-compatible).
+  * Self-hosted, with **IPFS** for large artifacts.
+
+* **BlackRain.ai (consumer plane):**
+
+  * Free/affordable inference endpoints.
+  * **AI Inference Credits ↔ AIT\*** exchange path (guardrails & spread).
+
+---
+
+## Repository Layout
+
+```
+/contracts         # Base L2 smart contracts (NodeRegistry, TaskRegistry, staking/rewards)
+/tscli             # Command-line client (wallets, register, submit, stake, monitor)
+/tensordb          # Ceramic fork + schemas + indexers
+/validators        # Bittensor validation/oracle reference nodes (TestNet by default)
+/docs              # Whitepaper, specs, diagrams, threat model
+/examples          # Minimal apps, SDK snippets, integration samples
+```
+
+*(Directories may be introduced progressively as components are open-sourced.)*
+
+---
+
+## Quickstart
+
+**Prerequisites**
+
+* Node.js ≥ 18, pnpm/npm
+* Python ≥ 3.10 (for validator/oracle utilities)
+* Docker (optional, for IPFS & local services)
+* Base RPC endpoint (e.g., from your provider)
+* Bittensor **TestNet** access (for running oracles/validators)
+
+**1) Clone & install**
+
+```bash
+git clone https://github.com/<your-org>/basetensor.git
+cd basetensor
+pnpm install   # or npm i
+```
+
+**2) Bring up local services (optional)**
+
+```bash
+# Example: start self-hosted IPFS & TensorDB dev containers
+docker compose up -d
+```
+
+**3) Configure environment**
+Create `.env` at the repo root (see **Configuration** below).
+
+**4) Build & run**
+
+```bash
+pnpm -w build
+
+# tscli help
+cd tscli
+pnpm start -- --help
+```
+
+---
+
+## Configuration
+
+Create a `.env` file with the following (example values):
+
+```
+# Base / EVM
+BASE_RPC_URL=https://base-mainnet.infura.io/v3/<key>
+CHAIN_ID=8453
+WALLET_PRIVATE_KEY=0x...
+
+# TensorDB / IPFS
+TENSORDB_URL=http://localhost:7007
+IPFS_API_URL=http://localhost:5001
+IPFS_GATEWAY_URL=http://localhost:8080/ipfs/
+
+# Bittensor
+BITTENSOR_NETWORK=testnet
+BITTENSOR_SUBNET=416     # DevNet default; use 415 for Mainnet mapping
+
+# Telemetry / Misc
+LOG_LEVEL=info
+```
+
+> Keep private keys and secrets secure. For production, use KMS or a secrets vault.
+
+---
+
+## CLI (`tscli`)
+
+Representative commands (final names/flags may change):
+
+```bash
+# Create or import an EVM wallet
+tscli create-wallet
+
+# Register a miner (public IP/port; one-miner-per-user enforced via DID + contracts)
+tscli register-miner --tensornode 10 --ip 203.0.113.10 --port 8080
+
+# Start processing tasks for a tensornode
+tscli --start miner --tensornode 10
+
+# Submit a task result (uploads artifact to IPFS and records CID in TensorDB)
+tscli submit-task --tensornode 10 --task-id task123 --data ./result.json
+
+# Rotate endpoint
+tscli update-miner --ip 203.0.113.11 --port 8081
+
+# Stake / claim / query
+tscli stake --amount 1000
+tscli claim-rewards
+tscli query-stake
+```
+
+---
+
+## Contracts
+
+* Network: **Base** (L2, chain ID 8453)
+* Addresses: *TBD — will be published in `/contracts/README.md` and release notes*
+* Events: `MinerRegistered`, `TaskSubmitted`, `StakeUpdated`, `RewardsClaimed`, …
+
+**Audits:** Prior to mainnet enablement, external audits will be performed. Do not use unaudited code in production.
+
+---
+
+## Networks & Subnets
+
+| Plane | Network | Subnet/ID | Purpose                                |
+| ----: | ------- | --------- | -------------------------------------- |
+|   EVM | Base L2 | 8453      | Settlement: registry, staking, rewards |
+|   TAO | TestNet | —         | **Oracles & Validators run here**      |
+|   TAO | Mainnet | **415**   | Basetensor Mainnet mapping             |
+|   TAO | DevNet  | **416**   | Basetensor DevNet mapping              |
+
+> Today: O\&V operate on **Bittensor TestNet**.
+> Planning: Mainnet mapping **415**, DevNet mapping **416** (subject to coordination & change).
+
+---
+
+## Tokenomics (Draft)
+
+* **Ticker:** **AIT\*** (*subject to change*).
+* **Utility:** Fees (task submission, priority routing, enhanced indexing), staking/slashing for QoS/security, future governance.
+* **Emissions:** Decaying rewards to bootstrap supply + validation, with small tail emission.
+* **Credits bridge:** **BlackRain.ai** users can exchange **AI Inference Credits ↔ AIT\*** within guardrails.
+
+*Complete draft (allocations, emissions, sinks/treasury) is in `/docs/whitepaper`.*
+
+---
+
+## Roadmap
+
+1. **Public Testnet (Base + TestNet TAO):** contracts + TensorDB + `tscli`, miner registration, basic rewards.
+2. **Subnet Validation:** Bittensor TestNet oracles/validators; dashboards & metrics; audits.
+3. **Consumer Endpoints:** BlackRain.ai free/affordable tiers; **AI Inference Credits ↔ AIT\*** conversion.
+4. **Mainnet Mapping:** TAO subnets **415** (Mainnet) & **416** (DevNet); subnet ownership path.
+5. **AI-Optimized TensorDB:** indexing for models/datasets/embeddings; confidentiality (TEEs/ZK) pilots.
+
+---
+
+## Contributing
+
+We welcome issues, PRs, and discussions. Please:
+
+* Open an issue describing the change or bug.
+* Keep PRs focused and covered with tests where applicable.
+* Follow code style and sign your commits if required.
+
+---
+
+## Security
+
+If you discover a vulnerability, **please email** [security@basetensor.com](mailto:security@basetensor.com) with details and reproduction steps.
+We’ll acknowledge receipt within 72 hours and coordinate a fix and disclosure window.
+
+---
+
+## License
+
+Copyright © Basetensor contributors.
+See [`LICENSE`](./LICENSE) for details. (License will be finalized prior to mainnet.)
+
+---
+
+### Links
+
+* Whitepaper: see `/docs/whitepaper`
+* Getting Started examples: `/examples`
+* Questions: open a GitHub Discussion or email [hello@basetensor.com](mailto:hello@basetensor.com)
+
+> *AIT\**: ticker and parameters are drafts and **subject to change** pending simulations, audits, and community feedback.
