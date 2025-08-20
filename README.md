@@ -6,74 +6,71 @@ Decentralized AI/ML inference on **Base (L2, chain ID 8453)** with validation vi
 
 ## Highlights
 
-* **On-chain settlement:** EVM smart contracts on **Base** for registration, staking, task lifecycle, and rewards.
-* **Verifiable results:** Oracles & Validators run through **Bittensor TestNet** (see subnet mapping).
-* **Data layer built for AI:** **TensorDB** stores miner metadata, task descriptors, and output references; large artifacts in **IPFS**.
-* **CLI-first UX:** `tscli` handles wallets, miner registration, task submission, staking, and monitoring.
-* **Consumer access:** BlackRain.ai provides **free/affordable inference** and lets users exchange **AI Inference Credits ↔ AIT\***.
-* **Token (draft):** Ticker **AIT\*** (*subject to change*) for fees, staking/slashing, and governance.
+- **On-chain settlement:** EVM smart contracts on **Base** for registration, staking, task lifecycle, and rewards.  
+- **Verifiable results:** Oracles & Validators run on **Bittensor TestNet** (see subnet mapping below).  
+- **Data layer built for AI:** **TensorDB** stores miner metadata, task descriptors, and output references; large artifacts in **IPFS**.  
+- **CLI-first UX:** `tscli` handles wallets, miner registration, task submission, staking, and monitoring.  
+- **Consumer access:** BlackRain.ai provides **free/affordable inference** and lets users exchange **AI Inference Credits ↔ AIT\***.  
+- **Token (draft):** Ticker **AIT\*** (*subject to change*) for fees, staking/slashing, and governance.
 
-> **Bittensor Integration (Networks & Subnets)**
-> • Oracles & Validators: **Bittensor TestNet**
-> • **Subnet 415** → Basetensor **Mainnet**
-> • **Subnet 416** → Basetensor **DevNet**
-> *(IDs and mapping may evolve; watch releases for updates.)*
+> **Bittensor Integration (TestNet Subnets)**  
+> • **All** Oracles & Validators operate on **Bittensor TestNet**.  
+> • **Subnet 415 → MainNet (production environment) on TestNet**  
+> • **Subnet 416 → DevNet (development/staging) on TestNet**  
+> *(We are using TestNet subnets because we cannot register a mainnet subnet right now—and we won’t wait. TestNet still gives us Bittensor’s security/validation mechanics.)*
 
 ---
 
 ## Table of Contents
-
-* [Architecture](#architecture)
-* [Repository Layout](#repository-layout)
-* [Quickstart](#quickstart)
-* [Configuration](#configuration)
-* [CLI (`tscli`)](#cli-tscli)
-* [Contracts](#contracts)
-* [Networks & Subnets](#networks--subnets)
-* [Tokenomics (Draft)](#tokenomics-draft)
-* [Roadmap](#roadmap)
-* [Contributing](#contributing)
-* [Security](#security)
-* [License](#license)
+- [Architecture](#architecture)
+- [Repository Layout](#repository-layout)
+- [Quickstart](#quickstart)
+- [Configuration](#configuration)
+- [CLI (`tscli`)](#cli-tscli)
+- [Contracts](#contracts)
+- [Networks & Subnets](#networks--subnets)
+- [Tokenomics (Draft)](#tokenomics-draft)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
 
 ---
 
 ## Architecture
 
-* **Smart Contracts (Base, L2 8453):**
+- **Smart Contracts (Base, L2 8453):**  
+  - `NodeRegistry`: miner registration (address, nodeId, public endpoint).  
+  - `TaskRegistry`: task assignment & submission; events for observers.  
+  - Staking/rewards modules.
 
-  * `NodeRegistry`: miner registration (address, nodeId, public endpoint).
-  * `TaskRegistry`: task assignment & submission; events for observers.
-  * Staking/rewards modules.
+- **Bittensor Validation Plane (TestNet):**  
+  - **Oracles** provide task parameters/feeds.  
+  - **Validators** verify miner outputs and inform rewards.
 
-* **Bittensor Subnet (validation plane):**
+- **TensorDB (Ceramic fork):**  
+  - Mutable, queryable streams for miner metadata, task descriptors, result CIDs.  
+  - Optional SQL indexing for analytics (MySQL-compatible).  
+  - Self-hosted, with **IPFS** for large artifacts.
 
-  * **TestNet** oracles provide task parameters/feeds.
-  * **TestNet** validators verify miner outputs, informing rewards.
-
-* **TensorDB (Ceramic fork):**
-
-  * Mutable, queryable streams for miner metadata, task descriptors, result CIDs.
-  * Optional SQL indexing for analytics (MySQL-compatible).
-  * Self-hosted, with **IPFS** for large artifacts.
-
-* **BlackRain.ai (consumer plane):**
-
-  * Free/affordable inference endpoints.
-  * **AI Inference Credits ↔ AIT\*** exchange path (guardrails & spread).
+- **BlackRain.ai (consumer plane):**  
+  - Free/affordable inference endpoints.  
+  - **AI Inference Credits ↔ AIT\*** exchange path (guardrails & spread).
 
 ---
 
 ## Repository Layout
 
 ```
+
 /contracts         # Base L2 smart contracts (NodeRegistry, TaskRegistry, staking/rewards)
 /tscli             # Command-line client (wallets, register, submit, stake, monitor)
 /tensordb          # Ceramic fork + schemas + indexers
-/validators        # Bittensor validation/oracle reference nodes (TestNet by default)
+/validators        # Bittensor TestNet oracle/validator reference nodes
 /docs              # Whitepaper, specs, diagrams, threat model
 /examples          # Minimal apps, SDK snippets, integration samples
-```
+
+````
 
 *(Directories may be introduced progressively as components are open-sourced.)*
 
@@ -82,20 +79,18 @@ Decentralized AI/ML inference on **Base (L2, chain ID 8453)** with validation vi
 ## Quickstart
 
 **Prerequisites**
-
-* Node.js ≥ 18, pnpm/npm
-* Python ≥ 3.10 (for validator/oracle utilities)
-* Docker (optional, for IPFS & local services)
-* Base RPC endpoint (e.g., from your provider)
-* Bittensor **TestNet** access (for running oracles/validators)
+- Node.js ≥ 18, pnpm/npm
+- Python ≥ 3.10 (for validator/oracle utilities)
+- Docker (optional, for IPFS & local services)
+- Base RPC endpoint (e.g., from your provider)
+- Bittensor **TestNet** access (for running oracles/validators)
 
 **1) Clone & install**
-
 ```bash
 git clone https://github.com/<your-org>/basetensor.git
 cd basetensor
 pnpm install   # or npm i
-```
+````
 
 **2) Bring up local services (optional)**
 
@@ -134,9 +129,11 @@ TENSORDB_URL=http://localhost:7007
 IPFS_API_URL=http://localhost:5001
 IPFS_GATEWAY_URL=http://localhost:8080/ipfs/
 
-# Bittensor
+# Bittensor (we operate entirely on TestNet for now)
 BITTENSOR_NETWORK=testnet
-BITTENSOR_SUBNET=416     # DevNet default; use 415 for Mainnet mapping
+# OUR environments on TestNet:
+BITTENSOR_SUBNET_MAINNET=415    # OUR Mainnet (production) on TestNet
+BITTENSOR_SUBNET_DEVNET=416     # OUR DevNet (staging) on TestNet
 
 # Telemetry / Misc
 LOG_LEVEL=info
@@ -180,21 +177,19 @@ tscli query-stake
 * Addresses: *TBD — will be published in `/contracts/README.md` and release notes*
 * Events: `MinerRegistered`, `TaskSubmitted`, `StakeUpdated`, `RewardsClaimed`, …
 
-**Audits:** Prior to mainnet enablement, external audits will be performed. Do not use unaudited code in production.
+**Audits:** Prior to production enablement, external audits will be performed. Do not use unaudited code in production.
 
 ---
 
 ## Networks & Subnets
 
-| Plane | Network | Subnet/ID | Purpose                                |
-| ----: | ------- | --------- | -------------------------------------- |
-|   EVM | Base L2 | 8453      | Settlement: registry, staking, rewards |
-|   TAO | TestNet | —         | **Oracles & Validators run here**      |
-|   TAO | Mainnet | **415**   | Basetensor Mainnet mapping             |
-|   TAO | DevNet  | **416**   | Basetensor DevNet mapping              |
+| Plane | Network     | Subnet/ID | Purpose                                             |
+| ----: | ----------- | --------- | --------------------------------------------------- |
+|   EVM | Base L2     | 8453      | Settlement: registry, staking, rewards              |
+|   TAO | **TestNet** | **415**   | **OUR Mainnet (production environment) on TestNet** |
+|   TAO | **TestNet** | **416**   | **OUR DevNet (development/staging) on TestNet**     |
 
-> Today: O\&V operate on **Bittensor TestNet**.
-> Planning: Mainnet mapping **415**, DevNet mapping **416** (subject to coordination & change).
+> **Why TestNet now?** Bittensor mainnet subnet registration isn’t available to us yet, and we will not wait. Running on **TestNet** allows us to ship and still leverage Bittensor’s security/validation mechanics. We will migrate/mirror as mainnet options open up.
 
 ---
 
@@ -211,10 +206,10 @@ tscli query-stake
 
 ## Roadmap
 
-1. **Public Testnet (Base + TestNet TAO):** contracts + TensorDB + `tscli`, miner registration, basic rewards.
-2. **Subnet Validation:** Bittensor TestNet oracles/validators; dashboards & metrics; audits.
+1. **Public Testnet (Base + Bittensor TestNet):** contracts + TensorDB + `tscli`, miner registration, basic rewards.
+2. **Validation Plane:** TestNet oracles/validators; dashboards & metrics; audits.
 3. **Consumer Endpoints:** BlackRain.ai free/affordable tiers; **AI Inference Credits ↔ AIT\*** conversion.
-4. **Mainnet Mapping:** TAO subnets **415** (Mainnet) & **416** (DevNet); subnet ownership path.
+4. **Evolution Path:** Maintain **415/416** on TestNet; adopt/mirror mainnet subnet(s) when registration is feasible.
 5. **AI-Optimized TensorDB:** indexing for models/datasets/embeddings; confidentiality (TEEs/ZK) pilots.
 
 ---
@@ -239,14 +234,16 @@ We’ll acknowledge receipt within 72 hours and coordinate a fix and disclosure 
 ## License
 
 Copyright © Basetensor contributors.
-See [`LICENSE`](./LICENSE) for details. (License will be finalized prior to mainnet.)
+See [`LICENSE`](./LICENSE) for details. (License will be finalized prior to production.)
 
 ---
 
 ### Links
 
 * Whitepaper: see `/docs/whitepaper`
-* Getting Started examples: `/examples`
+* Getting started examples: `/examples`
 * Questions: open a GitHub Discussion or email [hello@basetensor.com](mailto:hello@basetensor.com)
 
 > *AIT\**: ticker and parameters are drafts and **subject to change** pending simulations, audits, and community feedback.
+
+
